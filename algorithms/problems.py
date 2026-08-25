@@ -234,16 +234,21 @@ class ModuleRepairProblem(SearchProblem):
         """
         Returns True if the robot reached C after picking up M.
         """
-        # TODO: Add your code here
-        utils.raiseNotDefined()
+        robotCell, carryingModule = state
+        return carryingModule and robotCell == self.controlPosition
 
     def _getStepCost(self, nextPosition, hasModule):
         """
         Returns the movement cost for entering nextPosition.
 
         """
-        # TODO: Add your code here
-        utils.raiseNotDefined()
+        cellX, cellY = nextPosition
+        terrainCost = self.startingMissionState.getTerrainCost(cellX, cellY)
+
+        if hasModule:
+            return 2 * terrainCost
+
+        return terrainCost
 
     def getSuccessors(self, state):
         """
@@ -268,7 +273,33 @@ class ModuleRepairProblem(SearchProblem):
 
         successors = []
         self._expanded += 1
-        # TODO: Add your code here
+
+        # Offsets applied to the robot cell, paired with the direction they encode.
+        moveOffsets = (
+            (Directions.NORTH, 0, 1),
+            (Directions.SOUTH, 0, -1),
+            (Directions.EAST, 1, 0),
+            (Directions.WEST, -1, 0),
+        )
+
+        (robotX, robotY), carryingModule = state
+        stationWalls = self.walls
+        moduleCell = self.modulePosition
+
+        for moveDirection, offsetX, offsetY in moveOffsets:
+            targetX, targetY = robotX + offsetX, robotY + offsetY
+
+            if stationWalls[targetX][targetY]:
+                continue
+
+            targetCell = (targetX, targetY)
+
+            # The cost is charged before the pickup flag flips, so the move that
+            # enters M is still billed at the normal terrain rate.
+            moveCost = self._getStepCost(targetCell, carryingModule)
+            moduleAfterMove = carryingModule or targetCell == moduleCell
+
+            successors.append(((targetCell, moduleAfterMove), moveDirection, moveCost))
 
         return successors
 
